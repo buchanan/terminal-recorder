@@ -1,0 +1,28 @@
+syntax = "proto3";
+package recorder;
+
+import "google/protobuf/timestamp.proto";
+
+message COMMAND {
+	string line = 1;
+	uint32 count = 2;
+	google.protobuf.Timestamp timestamp = 3;
+	message KEY {
+		double offset = 1;
+		string tag = 2;
+		string key = 3;
+	}
+	repeated KEY keystrokes = 4;
+}
+
+message HEADER {
+	uint32 version = 1;
+	uint32 width = 2;
+	uint32 height = 3;
+	google.protobuf.Timestamp timestamp = 4;
+	double idle = 5;
+	string command = 6;
+	string title = 7;
+	bytes env = 8; //json encoded environemnt dict
+	bytes theme = 9; //json encoded terminal theme
+}
