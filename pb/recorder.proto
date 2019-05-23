@@ -1,0 +1,45 @@
+// protoc --go_out=/home/nbuchanan/Projects/recorder/pb recorder.proto
+syntax = "proto3";
+package rp;
+import "google/protobuf/timestamp.proto";
+
+message Header {
+  int32 version = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  double idle  = 3;
+  string command = 4;
+  string title = 5;
+  bytes env = 6;
+  bytes theme = 7;
+  string host = 8;
+  string username = 9;
+  Terminal terminal = 10;
+}
+
+message Terminal {
+  int64 offset = 1; //seconds from start
+  uint32 width = 2;
+  uint32 height = 3;
+}
+
+message Key {
+  int64 offset = 1; //seconds from start
+  bytes key = 2;
+  bool input = 3;
+}
+
+message Command {
+  string line = 1;
+  bool input = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  repeated Key keystrokes = 4;
+}
+
+message RecordMessage {  
+  oneof record {
+    Header header = 1;
+    Terminal terminal = 2;
+    Command command = 3;
+    Key key = 4;
+  }
+}

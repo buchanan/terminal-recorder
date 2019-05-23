@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -13,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kr/pty"
+	"./pty"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -128,7 +130,6 @@ func main() {
 	commandArgs := strings.Split(command, " ")
 	c := exec.Command(commandArgs[0], commandArgs[1:]...)
 
-	var ptmx *os.File
 	winsize := pty.Winsize{
 		Rows: 24,
 		Cols: 80,
@@ -143,20 +144,20 @@ func main() {
 		}
 
 		// Set stdin in raw mode.
-		if oldState, err := terminal.MakeRaw(stdinFD); err != nil {
+		if oldState, err := pty.SetRawTerminal(stdinFD); err != nil {
 			log.Println(err)
 			os.Exit(129)
 		} else {
-			defer terminal.Restore(stdinFD, oldState) // Best effort.
+			defer terminal.Restore(stdinFD, oldState)
 		}
 	}
-	if pt, err := pty.StartWithSize(c, &winsize); err != nil {
+	master, err := pty.StartWithSize(c, &winsize)
+	if err != nil {
 		log.Println(err)
 		os.Exit(129)
 	} else {
 		// Make sure to close the pty at the end.
-		defer pt.Close()
-		ptmx = pt
+		defer master.Close()
 	}
 
 	// OpenOutFile
@@ -192,6 +193,11 @@ func main() {
 			defer fh.Close()
 		}
 	}
+
+	//Open network log
+	networkfile := os.Create("networkfile")
+	network := bufio.NewWriterSize(networkfile, 1024)
+	defer network.Flush()
 
 	// Write header
 	if !appendOut {
@@ -230,44 +236,31 @@ func main() {
 				},
 			})
 	}
-
-	// TeeReader copied from io.TeeReader
-	var teeIN io.Reader = &teeReader{
-		r:   os.Stdin,
-		w:   outfile,
-		tag: "i",
-	}
-	var teeOUT io.Reader = &teeReader{
-		r:   ptmx,
-		w:   outfile,
-		tag: "o",
-	}
-	// stdin true by default, use os.Stdin unless flag is passed
-	if stdin {
-		teeIN = os.Stdin
-	}
-
-	// Copy stdin to the pty and the pty to stdout.
+	// Copy stdin to terminal
 	go func() {
-		io.Copy(ptmx, teeIN)
+		io.Copy(master, os.Stdin)
 	}()
-	io.Copy(os.Stdout, teeOUT)
-}
-
-type teeReader struct {
-	r   io.Reader
-	w   io.Writer
-	tag string
-}
-
-func (t *teeReader) Read(p []byte) (n int, err error) {
-	n, err = t.r.Read(p)
-	if n > 0 {
-		err = json.NewEncoder(t.w).Encode([]interface{}{
+	//Copy terminal out to stdout
+	S := bufio.NewScanner(master)
+	S.Split(bufio.ScanBytes)
+	for S.Scan() {
+		//Write to terminal
+		os.Stdout.Write(S.Bytes())
+		//Create message
+		if msg, err := json.Marshal([]interface{}{
 			time.Since(startTime).Seconds(),
-			t.tag,
-			string(p[:n]),
-		})
+			"o",
+			fmt.Sprintf("%s", S.Bytes()), //TODO add option to modify output format in config
+		}); err != nil {
+			break //TODO handle this error somehow
+		}
+		//Write to local log file
+		if _, err := outfile.Write(msg); err != nil {
+			break //TODO handle this error somehow
+		}
+		//Write to network
+		if _, err := network, Write(msg); err != nil {
+			break //TODO handle this error somehow
+		}
 	}
-	return n, err
 }
