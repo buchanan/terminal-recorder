@@ -55,7 +55,7 @@ func (w wireMessage) Do(F interface{}) error {
 	return functionMismatch
 }
 
-func readMessage(b []byte) (*wireMessage, error) {
+func ReadMessage(b []byte) (*wireMessage, error) {
 	var message RecordMessage
 	if err := proto.Unmarshal(b, &message); err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func readMessage(b []byte) (*wireMessage, error) {
 	return nil, errors.New("Unknown message type")
 }
 
-func createMessage(NM interface{}) ([]byte, error) {
+func CreateMessage(NM interface{}) ([]byte, error) {
 	var message []byte
 	var err error
 	switch M := NM.(type) {

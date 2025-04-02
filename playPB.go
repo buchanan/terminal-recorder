@@ -8,7 +8,8 @@ import (
 	"sync"
 	"time"
 
-	pb "../pb"
+	pb "buchanan/recorder/pb"
+
 	proto "github.com/golang/protobuf/proto"
 	//timestamp "github.com/golang/protobuf/ptypes/timestamp"
 )

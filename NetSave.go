@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	pb "./pb"
+	pb "buchanan/recorder/pb"
 	//timestamp "github.com/golang/protobuf/ptypes/timestamp"
 )
 
@@ -46,11 +46,11 @@ func handleProtoClient(conn net.Conn) {
 	c := make(chan []byte)
 	go save2File("out", c)
 	S := bufio.NewScanner(conn)
-	S.Split(ScanMessages)
+	S.Split(pb.ScanMessages)
 
 	for S.Scan() {
 		//Check if message is a header and print it
-		if WM, err := readMessage(S.Bytes()); err == nil {
+		if WM, err := pb.ReadMessage(S.Bytes()); err == nil {
 			if WM.MessageType == "header" {
 				readHeader = true
 				//TODO create unique videoID

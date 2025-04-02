@@ -19,8 +19,9 @@ import (
 	"syscall"
 	"time"
 
-	pb "./pb"
-	pty "./pty"
+	pb "buchanan/recorder/pb"
+	pty "buchanan/recorder/pty"
+
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	flag "github.com/spf13/pflag"
 	viper "github.com/spf13/viper"
@@ -37,8 +38,6 @@ var (
 	Hostname  string
 	output    io.Writer
 	outputL   sync.Mutex
-	// outfile   *os.File
-	// netout    net.Conn
 	startTime time.Time = time.Now()
 	cleanup   []func() error
 	winsize   pty.Winsize = pty.Winsize{
@@ -182,7 +181,7 @@ func main() {
 		BG:      "#212121",
 		Palette: "#151515:#ac4142:#7e8e50:#e5b567:#6c99bb:#9f4e85:#7dd6cf:#d0d0d0:#505050:#ac4142:#7e8e50:#e5b567:#6c99bb:#9f4e85:#7dd6cf:#f5f5f5",
 	})
-	if message, err := createMessage(&pb.Header{
+	if message, err := pb.CreateMessage(&pb.Header{
 		Version: 1,
 		Timestamp: &timestamp.Timestamp{
 			Seconds: time.Now().UnixNano(),
@@ -284,7 +283,7 @@ func Snoop(output io.Writer, pseudoTerm *os.File) {
 			} else {
 				pty.Setsize(pseudoTerm, ws)
 				//Write out terminal info
-				if message, err := createMessage(&pb.Terminal{
+				if message, err := pb.CreateMessage(&pb.Terminal{
 					Offset: time.Since(startTime).Nanoseconds(),
 					Width:  uint32(winsize.Cols),
 					Height: uint32(winsize.Rows),
@@ -313,7 +312,7 @@ func (R *KeyRecorder) Write(data []byte) (int, error) {
 	}
 	copy(k.Key, data)
 
-	message, err := createMessage(&k)
+	message, err := pb.CreateMessage(&k)
 	if err != nil {
 		return 0, err
 	}
